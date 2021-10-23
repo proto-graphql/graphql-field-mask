@@ -24,38 +24,25 @@ export function fieldMaskPathsFromResolveInfo(
   info: GraphQLResolveInfo,
   opts: FieldMaskPathsFromResolveInfoOptions = {}
 ) {
-  return fieldMaskPaths(typename, [...info.fieldNodes], info.fragments, info.schema, opts);
+  return fieldMaskPaths(typename, info.fieldNodes, info.fragments, info.schema, opts);
 }
 
 function fieldMaskPaths(
   typename: string,
-  node:
-    | FieldNode
-    | FragmentDefinitionNode
-    | InlineFragmentNode
-    | FieldNode[]
-    | FragmentDefinitionNode[]
-    | InlineFragmentNode[],
+  nodes: ReadonlyArray<FieldNode>,
   fragments: GraphQLResolveInfo["fragments"],
   schema: GraphQLSchema,
   opts: FieldMaskPathsFromResolveInfoOptions
 ): string[] {
-  let fields: string[] = [];
+  const pathSet = new Set<string>();
 
-  if (Array.isArray(node)) {
-    for (const v of node) {
-      const res = fieldMaskPaths(typename, v, fragments, schema, opts);
-      fields = [...fields, ...res];
+  for (const node of nodes) {
+    for (const path of extractFieldsFromGraphqlAst(typename, node, fragments, schema, opts)) {
+      pathSet.add(path);
     }
-  } else {
-    if (!node.selectionSet) {
-      return [];
-    }
-
-    fields = extractFieldsFromGraphqlAst(typename, node, fragments, schema, opts);
   }
 
-  return Array.from(new Set(fields));
+  return [...pathSet];
 }
 
 function extractFieldsFromGraphqlAst(
@@ -69,7 +56,7 @@ function extractFieldsFromGraphqlAst(
     return [];
   }
 
-  let fields: string[] = [];
+  const fields: string[] = [];
 
   for (const selection of node.selectionSet.selections) {
     switch (selection.kind) {
@@ -88,9 +75,9 @@ function extractFieldsFromGraphqlAst(
         if (selection.selectionSet) {
           const childTypename = getNamedType(field.type).name;
           const childFields = extractFieldsFromGraphqlAst(childTypename, selection, fragments, schema, opts);
-          fields = [...fields, ...childFields.map((field) => `${fieldName}.${field}`)];
+          fields.push(...childFields.map((field) => `${fieldName}.${field}`));
         } else {
-          fields = [...fields, fieldName];
+          fields.push(fieldName);
         }
         break;
       }
@@ -102,13 +89,13 @@ function extractFieldsFromGraphqlAst(
         }
         const childTypename = fragment.typeCondition.name.value;
         const childFields = extractFieldsFromGraphqlAst(childTypename, fragment, fragments, schema, opts);
-        fields = [...fields, ...childFields];
+        fields.push(...childFields);
         break;
       }
       case "InlineFragment": {
         const childTypename = selection.typeCondition ? selection.typeCondition.name.value : typename;
         const childFields = extractFieldsFromGraphqlAst(childTypename, selection, fragments, schema, opts);
-        fields = [...fields, ...childFields];
+        fields.push(...childFields);
         break;
       }
     }

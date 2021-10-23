@@ -73,20 +73,54 @@ test("simple case", async () => {
   );
 
   expect(result).toMatchInlineSnapshot(`
-Object {
-  "data": Object {
-    "object1": Object {
-      "ignoredField": "ignoredField",
-      "targetField": "targetField",
-    },
-  },
-}
-`);
+    Object {
+      "data": Object {
+        "object1": Object {
+          "ignoredField": "ignoredField",
+          "targetField": "targetField",
+        },
+      },
+    }
+  `);
   expect(fetchObject1.mock.calls[0][0]).toMatchInlineSnapshot(`
-Array [
-  "target_field",
-]
-`);
+    Array [
+      "target_field",
+    ]
+  `);
+});
+
+test("with __typename", async () => {
+  const schema = createSchema();
+  const fetchObject1 = jest.fn().mockReturnValue({ targetField: "targetField" });
+  const result = await graphql(
+    schema,
+    `
+      {
+        object1 {
+          __typename
+          targetField
+        }
+      }
+    `,
+    undefined,
+    { fetchObject1 }
+  );
+
+  expect(result).toMatchInlineSnapshot(`
+    Object {
+      "data": Object {
+        "object1": Object {
+          "__typename": "Object1",
+          "targetField": "targetField",
+        },
+      },
+    }
+  `);
+  expect(fetchObject1.mock.calls[0][0]).toMatchInlineSnapshot(`
+    Array [
+      "target_field",
+    ]
+  `);
 });
 
 test("with fragment", async () => {
@@ -110,20 +144,20 @@ test("with fragment", async () => {
   );
 
   expect(result).toMatchInlineSnapshot(`
-Object {
-  "data": Object {
-    "object1": Object {
-      "ignoredField": "ignoredField",
-      "targetField": "targetField",
-    },
-  },
-}
-`);
+    Object {
+      "data": Object {
+        "object1": Object {
+          "ignoredField": "ignoredField",
+          "targetField": "targetField",
+        },
+      },
+    }
+  `);
   expect(fetchObject1.mock.calls[0][0]).toMatchInlineSnapshot(`
-Array [
-  "target_field",
-]
-`);
+    Array [
+      "target_field",
+    ]
+  `);
 });
 
 test("with inline fragment", async () => {
@@ -146,20 +180,56 @@ test("with inline fragment", async () => {
   );
 
   expect(result).toMatchInlineSnapshot(`
-Object {
-  "data": Object {
-    "object1": Object {
-      "ignoredField": "ignoredField",
-      "targetField": "targetField",
-    },
-  },
-}
-`);
+    Object {
+      "data": Object {
+        "object1": Object {
+          "ignoredField": "ignoredField",
+          "targetField": "targetField",
+        },
+      },
+    }
+  `);
   expect(fetchObject1.mock.calls[0][0]).toMatchInlineSnapshot(`
-Array [
-  "target_field",
-]
-`);
+    Array [
+      "target_field",
+    ]
+  `);
+});
+
+test("with annonymous inline fragment", async () => {
+  const schema = createSchema();
+  const fetchObject1 = jest.fn().mockReturnValue({ targetField: "targetField" });
+  const result = await graphql(
+    schema,
+    `
+      {
+        object1 {
+          ... {
+            targetField
+            ignoredField
+          }
+        }
+      }
+    `,
+    undefined,
+    { fetchObject1 }
+  );
+
+  expect(result).toMatchInlineSnapshot(`
+    Object {
+      "data": Object {
+        "object1": Object {
+          "ignoredField": "ignoredField",
+          "targetField": "targetField",
+        },
+      },
+    }
+  `);
+  expect(fetchObject1.mock.calls[0][0]).toMatchInlineSnapshot(`
+    Array [
+      "target_field",
+    ]
+  `);
 });
 
 test("with union", async () => {
@@ -195,20 +265,20 @@ test("with union", async () => {
   );
 
   expect(result).toMatchInlineSnapshot(`
-Object {
-  "data": Object {
-    "union": Object {
-      "ignoredField": "ignoredField",
-      "targetField": "targetField",
-    },
-  },
-}
-`);
+    Object {
+      "data": Object {
+        "union": Object {
+          "ignoredField": "ignoredField",
+          "targetField": "targetField",
+        },
+      },
+    }
+  `);
   expect(fetchUnion.mock.calls[0][0]).toMatchInlineSnapshot(`
-Array [
-  "target_field",
-]
-`);
+    Array [
+      "target_field",
+    ]
+  `);
 });
 
 test("with interface", async () => {
@@ -252,20 +322,20 @@ test("with interface", async () => {
   );
 
   expect(result).toMatchInlineSnapshot(`
-Object {
-  "data": Object {
-    "interface": Object {
-      "ignoredField": "ignoredField",
-      "targetField": "targetField",
-    },
-  },
-}
-`);
+    Object {
+      "data": Object {
+        "interface": Object {
+          "ignoredField": "ignoredField",
+          "targetField": "targetField",
+        },
+      },
+    }
+  `);
   expect(fetchInterface.mock.calls[0][0]).toMatchInlineSnapshot(`
-Array [
-  "target_field",
-]
-`);
+    Array [
+      "target_field",
+    ]
+  `);
 });
 
 describe("with nested field", () => {
@@ -307,22 +377,22 @@ describe("with nested field", () => {
     );
 
     expect(result).toMatchInlineSnapshot(`
-Object {
-  "data": Object {
-    "parent": Object {
-      "object1": Object {
-        "ignoredField": "ignoredField",
-        "targetField": "targetField",
-      },
-    },
-  },
-}
-`);
+      Object {
+        "data": Object {
+          "parent": Object {
+            "object1": Object {
+              "ignoredField": "ignoredField",
+              "targetField": "targetField",
+            },
+          },
+        },
+      }
+    `);
     expect(fetchParent.mock.calls[0][0]).toMatchInlineSnapshot(`
-Array [
-  "object1.target_field",
-]
-`);
+      Array [
+        "object1.target_field",
+      ]
+    `);
   });
 
   test("with union", async () => {
@@ -371,21 +441,21 @@ Array [
     );
 
     expect(result).toMatchInlineSnapshot(`
-Object {
-  "data": Object {
-    "parent": Object {
-      "childUnion": Object {
-        "ignoredField": "ignoredField",
-        "targetField": "targetField",
-      },
-    },
-  },
-}
-`);
+      Object {
+        "data": Object {
+          "parent": Object {
+            "childUnion": Object {
+              "ignoredField": "ignoredField",
+              "targetField": "targetField",
+            },
+          },
+        },
+      }
+    `);
     expect(fetchParent.mock.calls[0][0]).toMatchInlineSnapshot(`
-Array [
-  "object1.target_field",
-]
-`);
+      Array [
+        "object1.target_field",
+      ]
+    `);
   });
 });
