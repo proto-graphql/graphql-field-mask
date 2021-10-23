@@ -1,14 +1,11 @@
 import {
-  GraphQLSchema,
-  GraphQLObjectType,
-  GraphQLString,
-  GraphQLNonNull,
   graphql,
-  GraphQLUnionType,
-  GraphQLInterfaceType,
+  GraphQLInt,
+  GraphQLNonNull,
+  GraphQLObjectType,
   GraphQLObjectTypeConfig,
-  extendSchema,
-  parse,
+  GraphQLSchema,
+  GraphQLString,
 } from "graphql";
 import { fieldMaskPathsFromResolveInfo, GetFieldNameFunc } from "./fieldMaskPathsFromResolveInfo";
 
@@ -28,11 +25,8 @@ const object1Type = new GraphQLObjectType({
       type: GraphQLNonNull(GraphQLString),
       extensions: { fieldMask: { fieldName: "target_field" } } as FieldMaskExtensions,
     },
-    ignoredField: {
+    otherField: {
       type: GraphQLNonNull(GraphQLString),
-      resolve() {
-        return "ignoredField";
-      },
     },
   },
 });
@@ -46,7 +40,7 @@ function createSchema({
       object1: {
         type: object1Type,
         resolve(_source, _args, ctx, info) {
-          return ctx.fetchObject1(fieldMaskPathsFromResolveInfo("Object1", info, { getFieldName }));
+          return ctx.fetchObject1(fieldMaskPathsFromResolveInfo("Object1", info));
         },
       },
       ...queryFields,
@@ -55,450 +49,176 @@ function createSchema({
   return new GraphQLSchema({ query: queryType });
 }
 
-test("simple case", async () => {
-  const schema = createSchema();
-  const fetchObject1 = jest.fn().mockReturnValue({ targetField: "targetField" });
-  const result = await graphql(
-    schema,
-    `
-      {
-        object1 {
-          targetField
-          ignoredField
-        }
-      }
-    `,
-    undefined,
-    { fetchObject1 }
-  );
-
-  expect(result.errors).toBeUndefined();
-  expect(result).toMatchInlineSnapshot(`
-    Object {
-      "data": Object {
-        "object1": Object {
-          "ignoredField": "ignoredField",
-          "targetField": "targetField",
-        },
-      },
-    }
-  `);
-  expect(fetchObject1.mock.calls[0][0]).toMatchInlineSnapshot(`
-    Array [
-      "target_field",
-    ]
-  `);
-});
-
-test("with alias", async () => {
-  const schema = createSchema();
-  const fetchObject1 = jest.fn().mockReturnValue({ targetField: "targetField" });
-  const result = await graphql(
-    schema,
-    `
-      {
-        object1 {
-          aliasedField: targetField
-        }
-      }
-    `,
-    undefined,
-    { fetchObject1 }
-  );
-
-  expect(result.errors).toBeUndefined();
-  expect(result).toMatchInlineSnapshot(`
-    Object {
-      "data": Object {
-        "object1": Object {
-          "aliasedField": "targetField",
-        },
-      },
-    }
-  `);
-  expect(fetchObject1.mock.calls[0][0]).toMatchInlineSnapshot(`
-    Array [
-      "target_field",
-    ]
-  `);
-});
-
-test("with __typename", async () => {
-  const schema = createSchema();
-  const fetchObject1 = jest.fn().mockReturnValue({ targetField: "targetField" });
-  const result = await graphql(
-    schema,
-    `
-      {
-        object1 {
-          __typename
-          targetField
-        }
-      }
-    `,
-    undefined,
-    { fetchObject1 }
-  );
-
-  expect(result.errors).toBeUndefined();
-  expect(result).toMatchInlineSnapshot(`
-    Object {
-      "data": Object {
-        "object1": Object {
-          "__typename": "Object1",
-          "targetField": "targetField",
-        },
-      },
-    }
-  `);
-  expect(fetchObject1.mock.calls[0][0]).toMatchInlineSnapshot(`
-    Array [
-      "target_field",
-    ]
-  `);
-});
-
-test("with fragment", async () => {
-  const schema = createSchema();
-  const fetchObject1 = jest.fn().mockReturnValue({ targetField: "targetField" });
-  const result = await graphql(
-    schema,
-    `
-      query {
-        object1 {
-          ...Object1
-        }
-      }
-      fragment Object1 on Object1 {
-        targetField
-        ignoredField
-      }
-    `,
-    undefined,
-    { fetchObject1 }
-  );
-
-  expect(result.errors).toBeUndefined();
-  expect(result).toMatchInlineSnapshot(`
-    Object {
-      "data": Object {
-        "object1": Object {
-          "ignoredField": "ignoredField",
-          "targetField": "targetField",
-        },
-      },
-    }
-  `);
-  expect(fetchObject1.mock.calls[0][0]).toMatchInlineSnapshot(`
-    Array [
-      "target_field",
-    ]
-  `);
-});
-
-test("with inline fragment", async () => {
-  const schema = createSchema();
-  const fetchObject1 = jest.fn().mockReturnValue({ targetField: "targetField" });
-  const result = await graphql(
-    schema,
-    `
-      {
-        object1 {
-          ... on Object1 {
-            targetField
-            ignoredField
-          }
-        }
-      }
-    `,
-    undefined,
-    { fetchObject1 }
-  );
-
-  expect(result.errors).toBeUndefined();
-  expect(result).toMatchInlineSnapshot(`
-    Object {
-      "data": Object {
-        "object1": Object {
-          "ignoredField": "ignoredField",
-          "targetField": "targetField",
-        },
-      },
-    }
-  `);
-  expect(fetchObject1.mock.calls[0][0]).toMatchInlineSnapshot(`
-    Array [
-      "target_field",
-    ]
-  `);
-});
-
-test("with annonymous inline fragment", async () => {
-  const schema = createSchema();
-  const fetchObject1 = jest.fn().mockReturnValue({ targetField: "targetField" });
-  const result = await graphql(
-    schema,
-    `
-      {
-        object1 {
-          ... {
-            targetField
-            ignoredField
-          }
-        }
-      }
-    `,
-    undefined,
-    { fetchObject1 }
-  );
-
-  expect(result.errors).toBeUndefined();
-  expect(result).toMatchInlineSnapshot(`
-    Object {
-      "data": Object {
-        "object1": Object {
-          "ignoredField": "ignoredField",
-          "targetField": "targetField",
-        },
-      },
-    }
-  `);
-  expect(fetchObject1.mock.calls[0][0]).toMatchInlineSnapshot(`
-    Array [
-      "target_field",
-    ]
-  `);
-});
-
-test("with union", async () => {
-  const unionType = new GraphQLUnionType({
-    name: "UnionType",
-    types: [object1Type],
-  });
-  const schema = createSchema({
-    queryFields: {
-      union: {
-        type: unionType,
-        resolve(_source, _args, ctx, info) {
-          return ctx.fetchUnion(fieldMaskPathsFromResolveInfo("Object1", info, { getFieldName }));
-        },
-      },
-    },
-  });
-  const fetchUnion = jest.fn().mockReturnValue({ __typename: "Object1", targetField: "targetField" });
-  const result = await graphql(
-    schema,
-    `
-      {
-        union {
-          ... on Object1 {
-            targetField
-            ignoredField
-          }
-        }
-      }
-    `,
-    undefined,
-    { fetchUnion }
-  );
-
-  expect(result.errors).toBeUndefined();
-  expect(result).toMatchInlineSnapshot(`
-    Object {
-      "data": Object {
-        "union": Object {
-          "ignoredField": "ignoredField",
-          "targetField": "targetField",
-        },
-      },
-    }
-  `);
-  expect(fetchUnion.mock.calls[0][0]).toMatchInlineSnapshot(`
-    Array [
-      "target_field",
-    ]
-  `);
-});
-
-test("with interface", async () => {
-  const interfaceType = new GraphQLInterfaceType({
-    name: "InterfaceType",
-    resolveType() {
-      return "Object1";
-    },
-    fields: {
-      targetField: {
-        type: GraphQLNonNull(GraphQLString),
-      },
-    },
-  });
-  let schema = createSchema({
-    queryFields: {
-      interface: {
-        type: interfaceType,
-        resolve(_source, _args, ctx, info) {
-          return ctx.fetchInterface(fieldMaskPathsFromResolveInfo("Object1", info, { getFieldName }));
-        },
-      },
-    },
-  });
-  schema = extendSchema(schema, parse(`extend type Object1 implements InterfaceType`));
-  const fetchInterface = jest.fn().mockReturnValue({ targetField: "targetField" });
-  const result = await graphql(
-    schema,
-    `
-      {
-        interface {
-          ... on Object1 {
-            targetField
-            ignoredField
-          }
-        }
-      }
-    `,
-    undefined,
-    { fetchInterface }
-  );
-
-  expect(result.errors).toBeUndefined();
-  expect(result).toMatchInlineSnapshot(`
-    Object {
-      "data": Object {
-        "interface": Object {
-          "ignoredField": "ignoredField",
-          "targetField": "targetField",
-        },
-      },
-    }
-  `);
-  expect(fetchInterface.mock.calls[0][0]).toMatchInlineSnapshot(`
-    Array [
-      "target_field",
-    ]
-  `);
-});
-
-describe("with nested field", () => {
-  test("simple case", async () => {
-    const parentType = new GraphQLObjectType({
-      name: "Parent",
-      fields: {
-        object1: {
-          type: GraphQLNonNull(object1Type),
-          extensions: { fieldMask: { fieldName: "object1" } } as FieldMaskExtensions,
-        },
-      },
-    });
-    const schema = createSchema({
-      queryFields: {
-        parent: {
-          type: parentType,
-          resolve(_source, _args, ctx, info) {
-            return ctx.fetchParent(fieldMaskPathsFromResolveInfo("Parent", info, { getFieldName }));
-          },
-        },
-      },
-    });
-    const fetchParent = jest.fn().mockReturnValue({ object1: { targetField: "targetField" } });
-    const result = await graphql(
-      schema,
-      `
-        {
-          parent {
-            object1 {
-              targetField
-              ignoredField
-            }
-          }
-        }
-      `,
-      undefined,
-      { fetchParent }
-    );
+describe(fieldMaskPathsFromResolveInfo, () => {
+  it("returns valid field mask paths", async () => {
+    const schema = createSchema();
+    const fetchObject1 = jest.fn().mockReturnValue({ targetField: "target field", otherField: "other field" });
+    const result = await graphql(schema, "{ object1 { targetField, otherField } }", undefined, { fetchObject1 });
 
     expect(result.errors).toBeUndefined();
-    expect(result).toMatchInlineSnapshot(`
-      Object {
-        "data": Object {
-          "parent": Object {
-            "object1": Object {
-              "ignoredField": "ignoredField",
-              "targetField": "targetField",
+    expect(result.data).toEqual({ object1: { targetField: "target field", otherField: "other field" } });
+    expect(fetchObject1.mock.calls[0][0]).toEqual(["targetField", "otherField"]);
+  });
+
+  describe("with getFieldName option", () => {
+    it("returns a return value of getFieldName as a field mask path, but omit fields that getFieldName returned null", async () => {
+      const schema = createSchema({
+        queryFields: {
+          object1: {
+            type: object1Type,
+            resolve(_source, _args, ctx, info) {
+              return ctx.fetchObject1(fieldMaskPathsFromResolveInfo("Object1", info, { getFieldName }));
             },
           },
         },
-      }
-    `);
-    expect(fetchParent.mock.calls[0][0]).toMatchInlineSnapshot(`
-      Array [
-        "object1.target_field",
-      ]
-    `);
+      });
+      const fetchObject1 = jest.fn().mockReturnValue({ targetField: "target field", otherField: "other field" });
+      const result = await graphql(schema, "{ object1 { targetField, otherField } }", undefined, { fetchObject1 });
+
+      expect(result.errors).toBeUndefined();
+      expect(result.data).toEqual({ object1: { targetField: "target field", otherField: "other field" } });
+      expect(fetchObject1.mock.calls[0][0]).toEqual(["target_field"]);
+    });
   });
 
-  test("with union", async () => {
-    const childUnion = new GraphQLUnionType({
-      name: "ChildUnion",
-      types: [object1Type],
+  describe("with field alias", () => {
+    it("returns an original field name as a field mask path", async () => {
+      const schema = createSchema();
+      const fetchObject1 = jest.fn().mockReturnValue({ targetField: "target field" });
+      const result = await graphql(schema, "{ object1 { aliasedField: targetField } }", undefined, { fetchObject1 });
+
+      expect(result.errors).toBeUndefined();
+      expect(result.data).toEqual({ object1: { aliasedField: "target field" } });
+      expect(fetchObject1.mock.calls[0][0]).toEqual(["targetField"]);
     });
-    const parentType = new GraphQLObjectType({
-      name: "Parent",
-      fields: {
-        childUnion: {
-          type: GraphQLNonNull(childUnion),
-          extensions: { fieldMask: { fieldName: "object1" } } as FieldMaskExtensions,
-        },
-      },
+  });
+
+  describe("with __typename", () => {
+    it("returns field mask paths without __typename", async () => {
+      const schema = createSchema();
+      const fetchObject1 = jest.fn().mockReturnValue({ targetField: "target field" });
+      const result = await graphql(schema, "{ object1 { __typename, targetField } }", undefined, { fetchObject1 });
+
+      expect(result.errors).toBeUndefined();
+      expect(result.data).toEqual({ object1: { __typename: "Object1", targetField: "target field" } });
+      expect(fetchObject1.mock.calls[0][0]).toEqual(["targetField"]);
     });
-    const schema = createSchema({
-      queryFields: {
-        parent: {
-          type: parentType,
-          resolve(_source, _args, ctx, info) {
-            return ctx.fetchParent(fieldMaskPathsFromResolveInfo("Parent", info, { getFieldName }));
-          },
-        },
-      },
+  });
+
+  describe("with fragment", () => {
+    it("also includes fiels in fragments", async () => {
+      const schema = createSchema();
+      const fetchObject1 = jest.fn().mockReturnValue({ targetField: "target field", otherField: "other field" });
+      const result = await graphql(
+        schema,
+        `
+          query {
+            object1 {
+              ...Object1
+              otherField
+            }
+          }
+          fragment Object1 on Object1 {
+            targetField
+          }
+        `,
+        undefined,
+        { fetchObject1 }
+      );
+
+      expect(result.errors).toBeUndefined();
+      expect(result.data).toEqual({ object1: { targetField: "target field", otherField: "other field" } });
+      expect(fetchObject1.mock.calls[0][0]).toEqual(["targetField", "otherField"]);
     });
-    const fetchParent = jest
-      .fn()
-      .mockReturnValue({ childUnion: { __typename: "Object1", targetField: "targetField" } });
-    const result = await graphql(
-      schema,
-      `
-        {
-          parent {
-            childUnion {
+  });
+
+  describe("with inilne fragment", () => {
+    it("also includes fiels in inline fragments", async () => {
+      const schema = createSchema();
+      const fetchObject1 = jest.fn().mockReturnValue({ targetField: "target field", otherField: "other field" });
+      const result = await graphql(
+        schema,
+        `
+          query {
+            object1 {
               ... on Object1 {
                 targetField
-                ignoredField
               }
+              otherField
             }
           }
-        }
-      `,
-      undefined,
-      { fetchParent }
-    );
+        `,
+        undefined,
+        { fetchObject1 }
+      );
 
-    expect(result.errors).toBeUndefined();
-    expect(result).toMatchInlineSnapshot(`
-      Object {
-        "data": Object {
-          "parent": Object {
-            "childUnion": Object {
-              "ignoredField": "ignoredField",
-              "targetField": "targetField",
+      expect(result.errors).toBeUndefined();
+      expect(result.data).toEqual({ object1: { targetField: "target field", otherField: "other field" } });
+      expect(fetchObject1.mock.calls[0][0]).toEqual(["targetField", "otherField"]);
+    });
+  });
+
+  describe("with inilne fragment without type conditions", () => {
+    it("also includes fiels in inline fragments", async () => {
+      const schema = createSchema();
+      const fetchObject1 = jest.fn().mockReturnValue({ targetField: "target field", otherField: "other field" });
+      const result = await graphql(
+        schema,
+        `
+          query {
+            object1 {
+              ... {
+                targetField
+              }
+              otherField
+            }
+          }
+        `,
+        undefined,
+        { fetchObject1 }
+      );
+
+      expect(result.errors).toBeUndefined();
+      expect(result.data).toEqual({ object1: { targetField: "target field", otherField: "other field" } });
+      expect(fetchObject1.mock.calls[0][0]).toEqual(["targetField", "otherField"]);
+    });
+  });
+
+  describe("with nested object", () => {
+    it("returns nested field paths with parent path", async () => {
+      const parentType = new GraphQLObjectType({
+        name: "Parent",
+        fields: {
+          parentField: { type: GraphQLInt },
+          object1: { type: GraphQLNonNull(object1Type) },
+        },
+      });
+      const schema = createSchema({
+        queryFields: {
+          parent: {
+            type: parentType,
+            resolve(_source, _args, ctx, info) {
+              return ctx.fetchParent(fieldMaskPathsFromResolveInfo("Parent", info));
             },
           },
         },
-      }
-    `);
-    expect(fetchParent.mock.calls[0][0]).toMatchInlineSnapshot(`
-      Array [
-        "object1.target_field",
-      ]
-    `);
+      });
+      const fetchParent = jest
+        .fn()
+        .mockReturnValue({ parentField: 1, object1: { targetField: "target field", otherField: "other field" } });
+      const result = await graphql(
+        schema,
+        "{ parent { parentField, object1 { targetField, otherField } } }",
+        undefined,
+        { fetchParent }
+      );
+
+      expect(result.errors).toBeUndefined();
+      expect(result.data).toEqual({
+        parent: { parentField: 1, object1: { otherField: "other field", targetField: "target field" } },
+      });
+      expect(fetchParent.mock.calls[0][0]).toEqual(["parentField", "object1.targetField", "object1.otherField"]);
+    });
   });
 
   describe("when fetch outside of query resolvers", () => {
@@ -508,9 +228,8 @@ describe("with nested field", () => {
         fields: {
           object1: {
             type: GraphQLNonNull(object1Type),
-            extensions: { fieldMask: { fieldName: "object1" } } as FieldMaskExtensions,
             resolve(_source, _args, ctx, info) {
-              return ctx.fetchObject1(fieldMaskPathsFromResolveInfo("Object1", info, { getFieldName }));
+              return ctx.fetchObject1(fieldMaskPathsFromResolveInfo("Object1", info));
             },
           },
         },
@@ -525,41 +244,13 @@ describe("with nested field", () => {
           },
         },
       });
-      const fetchObject1 = jest.fn().mockReturnValue({ targetField: "targetField" });
-      const result = await graphql(
-        schema,
-        `
-          {
-            parent {
-              object1 {
-                targetField
-                ignoredField
-              }
-            }
-          }
-        `,
-        undefined,
-        { fetchObject1 }
-      );
-
+      const fetchObject1 = jest.fn().mockReturnValue({ targetField: "target field", otherField: "other field" });
+      const result = await graphql(schema, "{ parent { object1 { targetField otherField } } }", undefined, {
+        fetchObject1,
+      });
       expect(result.errors).toBeUndefined();
-      expect(result).toMatchInlineSnapshot(`
-        Object {
-          "data": Object {
-            "parent": Object {
-              "object1": Object {
-                "ignoredField": "ignoredField",
-                "targetField": "targetField",
-              },
-            },
-          },
-        }
-      `);
-      expect(fetchObject1.mock.calls[0][0]).toMatchInlineSnapshot(`
-        Array [
-          "target_field",
-        ]
-      `);
+      expect(result.data).toEqual({ parent: { object1: { otherField: "other field", targetField: "target field" } } });
+      expect(fetchObject1.mock.calls[0][0]).toEqual(["targetField", "otherField"]);
     });
   });
 });
