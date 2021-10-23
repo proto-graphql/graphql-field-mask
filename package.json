@@ -18,8 +18,8 @@
   "author": "izumin5210 <m@izum.in>",
   "license": "MIT",
   "scripts": {
-    "build": "tsc -p . && tsc -p ./tsconfig.module.json",
-    "clean": "node -e '[`lib`, `module`].forEach(dir => { fs.rmSync(dir, { recursive: true, force: true }) })'",
+    "build": "tsc --build",
+    "clean": "node -e '[`lib`, `module`, `tmp`].forEach(dir => { fs.rmSync(dir, { recursive: true, force: true }) })'",
     "lint": "frolint --branch main --expect-no-errors",
     "prepack": "yarn clean && yarn build",
     "test": "jest",

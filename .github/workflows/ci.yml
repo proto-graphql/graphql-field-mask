@@ -3,13 +3,6 @@ name: CI
 on: [push]
 
 jobs:
-  typecheck:
-    runs-on: ubuntu-latest
-    name: Typecheck
-    steps:
-    - uses: ./.github/actions/setup
-    - run: yarn typecheck
-
   lint:
     runs-on: ubuntu-latest
     name: Lint
