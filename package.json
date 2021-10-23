@@ -22,8 +22,7 @@
     "clean": "node -e '[`lib`, `module`, `tmp`].forEach(dir => { fs.rmSync(dir, { recursive: true, force: true }) })'",
     "lint": "frolint --branch origin/main --expect-no-errors",
     "prepack": "yarn clean && yarn build",
-    "test": "jest",
-    "typecheck": "tsc -p . --noEmit"
+    "test": "jest"
   },
   "devDependencies": {
     "@types/jest": "^27.0.2",
