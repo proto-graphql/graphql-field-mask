@@ -7,26 +7,16 @@ jobs:
     runs-on: ubuntu-latest
     name: Typecheck
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-node@v2
-      with:
-        node-version: '16'
-        cache: 'yarn'
-    - run: yarn --frozen-lockfile
+    - uses: ./.github/actions/setup
     - run: yarn typecheck
 
   lint:
     runs-on: ubuntu-latest
     name: Lint
     steps:
-    - uses: actions/checkout@v2
+    - uses: ./.github/actions/setup
       with:
         fetch-depth: 0
-    - uses: actions/setup-node@v2
-      with:
-        node-version: '16'
-        cache: 'yarn'
-    - run: yarn --frozen-lockfile
     - run: yarn lint
 
   test:
@@ -36,12 +26,9 @@ jobs:
         node_version: [14, 16]
     name: Test - Node.js ${{ matrix.node_version }}
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-node@v2
+    - uses: ./.github/actions/setup
       with:
         node-version: ${{ matrix.node_version }}
-        cache: 'yarn'
-    - run: yarn --frozen-lockfile
     - run: yarn test --ci --coverage
     - uses: coverallsapp/github-action@v1.1.2
       with:
@@ -62,10 +49,5 @@ jobs:
     runs-on: ubuntu-latest
     name: Build
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-node@v2
-      with:
-        node-version: '16'
-        cache: 'yarn'
-    - run: yarn --frozen-lockfile
+    - uses: ./.github/actions/setup
     - run: yarn build
