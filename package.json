@@ -2,8 +2,33 @@
   "name": "graphql-field-mask",
   "version": "0.0.1",
   "description": "google.protobuf.FieldMask from GraphQL query",
+  "sideEffects": false,
   "main": "lib/index.js",
+  "module": "module/index.js",
+  "types": "malib/index.d.js",
+  "directories": {
+    "lib": "./lib"
+  },
+  "files": [
+    "lib/",
+    "module/",
+    "src/"
+  ],
   "repository": "https://github.com/izumin5210/graphql-field-mask",
   "author": "izumin5210 <m@izum.in>",
-  "license": "MIT"
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc -p . && tsc -p ./tsconfig.module.json",
+    "clean": "node -e '[`lib`, `module`].forEach(dir => { fs.rmSync(dir, { recursive: true, force: true }) })'",
+    "prepack": "yarn clean && yarn build",
+    "test": "jest",
+    "typecheck": "tsc -p . --noEmit"
+  },
+  "devDependencies": {
+    "@types/jest": "^27.0.2",
+    "frolint": "^2.8.2",
+    "jest": "^27.3.1",
+    "ts-jest": "^27.0.7",
+    "typescript": "^4.4.4"
+  }
 }
