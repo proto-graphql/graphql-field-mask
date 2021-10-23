@@ -20,6 +20,7 @@
   "scripts": {
     "build": "tsc -p . && tsc -p ./tsconfig.module.json",
     "clean": "node -e '[`lib`, `module`].forEach(dir => { fs.rmSync(dir, { recursive: true, force: true }) })'",
+    "lint": "frolint --branch main --expect-no-errors",
     "prepack": "yarn clean && yarn build",
     "test": "jest",
     "typecheck": "tsc -p . --noEmit"
