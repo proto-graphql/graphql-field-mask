@@ -72,12 +72,46 @@ test("simple case", async () => {
     { fetchObject1 }
   );
 
+  expect(result.errors).toBeUndefined();
   expect(result).toMatchInlineSnapshot(`
     Object {
       "data": Object {
         "object1": Object {
           "ignoredField": "ignoredField",
           "targetField": "targetField",
+        },
+      },
+    }
+  `);
+  expect(fetchObject1.mock.calls[0][0]).toMatchInlineSnapshot(`
+    Array [
+      "target_field",
+    ]
+  `);
+});
+
+test("with alias", async () => {
+  const schema = createSchema();
+  const fetchObject1 = jest.fn().mockReturnValue({ targetField: "targetField" });
+  const result = await graphql(
+    schema,
+    `
+      {
+        object1 {
+          aliasedField: targetField
+        }
+      }
+    `,
+    undefined,
+    { fetchObject1 }
+  );
+
+  expect(result.errors).toBeUndefined();
+  expect(result).toMatchInlineSnapshot(`
+    Object {
+      "data": Object {
+        "object1": Object {
+          "aliasedField": "targetField",
         },
       },
     }
@@ -106,6 +140,7 @@ test("with __typename", async () => {
     { fetchObject1 }
   );
 
+  expect(result.errors).toBeUndefined();
   expect(result).toMatchInlineSnapshot(`
     Object {
       "data": Object {
@@ -143,6 +178,7 @@ test("with fragment", async () => {
     { fetchObject1 }
   );
 
+  expect(result.errors).toBeUndefined();
   expect(result).toMatchInlineSnapshot(`
     Object {
       "data": Object {
@@ -179,6 +215,7 @@ test("with inline fragment", async () => {
     { fetchObject1 }
   );
 
+  expect(result.errors).toBeUndefined();
   expect(result).toMatchInlineSnapshot(`
     Object {
       "data": Object {
@@ -215,6 +252,7 @@ test("with annonymous inline fragment", async () => {
     { fetchObject1 }
   );
 
+  expect(result.errors).toBeUndefined();
   expect(result).toMatchInlineSnapshot(`
     Object {
       "data": Object {
@@ -264,6 +302,7 @@ test("with union", async () => {
     { fetchUnion }
   );
 
+  expect(result.errors).toBeUndefined();
   expect(result).toMatchInlineSnapshot(`
     Object {
       "data": Object {
@@ -321,6 +360,7 @@ test("with interface", async () => {
     { fetchInterface }
   );
 
+  expect(result.errors).toBeUndefined();
   expect(result).toMatchInlineSnapshot(`
     Object {
       "data": Object {
@@ -376,6 +416,7 @@ describe("with nested field", () => {
       { fetchParent }
     );
 
+    expect(result.errors).toBeUndefined();
     expect(result).toMatchInlineSnapshot(`
       Object {
         "data": Object {
@@ -440,6 +481,7 @@ describe("with nested field", () => {
       { fetchParent }
     );
 
+    expect(result.errors).toBeUndefined();
     expect(result).toMatchInlineSnapshot(`
       Object {
         "data": Object {
@@ -457,5 +499,67 @@ describe("with nested field", () => {
         "object1.target_field",
       ]
     `);
+  });
+
+  describe("when fetch outside of query resolvers", () => {
+    it("returns valid mask paths", async () => {
+      const parentType = new GraphQLObjectType({
+        name: "Parent",
+        fields: {
+          object1: {
+            type: GraphQLNonNull(object1Type),
+            extensions: { fieldMask: { fieldName: "object1" } } as FieldMaskExtensions,
+            resolve(_source, _args, ctx, info) {
+              return ctx.fetchObject1(fieldMaskPathsFromResolveInfo("Object1", info, { getFieldName }));
+            },
+          },
+        },
+      });
+      const schema = createSchema({
+        queryFields: {
+          parent: {
+            type: parentType,
+            resolve(_source, _args, _ctx, _info) {
+              return {};
+            },
+          },
+        },
+      });
+      const fetchObject1 = jest.fn().mockReturnValue({ targetField: "targetField" });
+      const result = await graphql(
+        schema,
+        `
+          {
+            parent {
+              object1 {
+                targetField
+                ignoredField
+              }
+            }
+          }
+        `,
+        undefined,
+        { fetchObject1 }
+      );
+
+      expect(result.errors).toBeUndefined();
+      expect(result).toMatchInlineSnapshot(`
+        Object {
+          "data": Object {
+            "parent": Object {
+              "object1": Object {
+                "ignoredField": "ignoredField",
+                "targetField": "targetField",
+              },
+            },
+          },
+        }
+      `);
+      expect(fetchObject1.mock.calls[0][0]).toMatchInlineSnapshot(`
+        Array [
+          "target_field",
+        ]
+      `);
+    });
   });
 });
