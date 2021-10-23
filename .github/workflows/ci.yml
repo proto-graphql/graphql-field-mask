@@ -12,13 +12,14 @@ jobs:
         node-version: '16'
         cache: 'yarn'
     - run: yarn --frozen-lockfile
-    - run: yarn test
+    - run: yarn typecheck
 
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         node_version: [14, 16]
+    name: Test - Node.js ${{ matrix.node_version }}
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-node@v2
@@ -26,7 +27,21 @@ jobs:
         node-version: ${{ matrix.node_version }}
         cache: 'yarn'
     - run: yarn --frozen-lockfile
-    - run: yarn typecheck
+    - run: yarn test --ci --coverage
+    - uses: coverallsapp/github-action@v1.1.2
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        flag-name: node${{ matrix.node }}
+        parallel: true
+
+  test-finish:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: coverallsapp/github-action@master
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        parallel-finished: true
 
   build:
     runs-on: ubuntu-latest
