@@ -7,9 +7,10 @@ jobs:
     runs-on: ubuntu-latest
     name: Lint
     steps:
-    - uses: ./.github/actions/setup
+    - uses: actions/checkout@v2
       with:
         fetch-depth: 0
+    - uses: ./.github/actions/setup
     - run: yarn lint
 
   test:
@@ -19,6 +20,7 @@ jobs:
         node_version: [14, 16]
     name: Test - Node.js ${{ matrix.node_version }}
     steps:
+    - uses: actions/checkout@v2
     - uses: ./.github/actions/setup
       with:
         node-version: ${{ matrix.node_version }}
@@ -42,5 +44,6 @@ jobs:
     runs-on: ubuntu-latest
     name: Build
     steps:
+    - uses: actions/checkout@v2
     - uses: ./.github/actions/setup
     - run: yarn build

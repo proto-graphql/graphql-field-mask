@@ -1,17 +1,11 @@
 name: Setup
 inputs:
-  fetch-depth:
-    default: ''
-    description: "Pass actions/checkout"
   node-version:
     default: 16
     description: "Node.js version"
 runs:
   using: composite
   steps:
-    - uses: actions/checkout@v2
-      with:
-        fetch-depth: ${{ inputs.fetch-depth }}
     - uses: actions/setup-node@v2
       with:
         node-version: ${{ inputs.node-version }}
