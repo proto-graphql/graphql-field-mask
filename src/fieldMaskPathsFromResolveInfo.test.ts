@@ -253,4 +253,21 @@ describe(fieldMaskPathsFromResolveInfo, () => {
       expect(fetchObject1.mock.calls[0][0]).toEqual(["targetField", "otherField"]);
     });
   });
+
+  it("throws an error when invalid typename is passed", async () => {
+    const schema = createSchema({
+      queryFields: {
+        object1: {
+          type: object1Type,
+          resolve(_source, _args, ctx, info) {
+            return ctx.fetchObject1(fieldMaskPathsFromResolveInfo("Object11111", info));
+          },
+        },
+      },
+    });
+    const fetchObject1 = jest.fn().mockReturnValue({ targetField: "target field", otherField: "other field" });
+    const result = await graphql(schema, "{ object1 { targetField, otherField } }", undefined, { fetchObject1 });
+
+    expect(result.errors).toHaveLength(1);
+  });
 });
