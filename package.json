@@ -5,7 +5,7 @@
   "sideEffects": false,
   "main": "lib/index.js",
   "module": "module/index.js",
-  "types": "malib/index.d.js",
+  "types": "lib/index.d.js",
   "directories": {
     "lib": "./lib"
   },
