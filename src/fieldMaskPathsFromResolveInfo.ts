@@ -16,9 +16,21 @@ export type GetFieldNameFunc = (
 ) => string | null;
 
 export type FieldMaskPathsFromResolveInfoOptions = {
+  /**
+   * Get field name in field mask path.
+   * If return `null`, this field is not included in field mask paths.
+   */
   getFieldName?: GetFieldNameFunc;
 };
 
+/**
+ * Create field mask paths from `GraphQLResolveInfo`.
+ *
+ * @param typename Name of GraphQL object type
+ * @param info
+ * @param opts
+ * @returns field mask paths
+ */
 export function fieldMaskPathsFromResolveInfo(
   typename: string,
   info: GraphQLResolveInfo,
