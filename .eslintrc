@@ -1,6 +1,6 @@
 {
   "extends": ["wantedly-typescript/without-react"],
   "parserOptions": {
-    "project": ["./tsconfig.json"]
+    "project": ["./tsconfig.json", "./configs/tsconfig.cjs.json", "./configs/tsconfig.test.json"]
   }
 }
