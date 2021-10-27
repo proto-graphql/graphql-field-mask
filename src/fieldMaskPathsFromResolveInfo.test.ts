@@ -6,6 +6,7 @@ import {
   GraphQLObjectTypeConfig,
   GraphQLSchema,
   GraphQLString,
+  GraphQLUnionType,
 } from "graphql";
 import { fieldMaskPathsFromResolveInfo, GetFieldNameFunc } from "./fieldMaskPathsFromResolveInfo";
 
@@ -218,6 +219,132 @@ describe(fieldMaskPathsFromResolveInfo, () => {
         parent: { parentField: 1, object1: { otherField: "other field", targetField: "target field" } },
       });
       expect(fetchParent.mock.calls[0][0]).toEqual(["parentField", "object1.targetField", "object1.otherField"]);
+    });
+  });
+
+  describe("with union type", () => {
+    it("returns only specified object's fields", async () => {
+      const object2Type = new GraphQLObjectType({ name: "Object2", fields: { field2: { type: GraphQLString } } });
+      const unionType = new GraphQLUnionType({ name: "unionType", types: [object1Type, object2Type] });
+      const schema = createSchema({
+        queryFields: {
+          union: {
+            type: unionType,
+            resolve(_source, _args, ctx, info) {
+              return ctx.fetchUnion({
+                object1: fieldMaskPathsFromResolveInfo("Object1", info),
+                object2: fieldMaskPathsFromResolveInfo("Object2", info),
+              });
+            },
+          },
+        },
+      });
+      const fetchUnion = jest
+        .fn()
+        .mockReturnValue({ __typename: "Object1", targetField: "target field", otherField: "other field" });
+      const result = await graphql(
+        schema,
+        `
+          {
+            union {
+              ... on Object1 {
+                targetField
+                otherField
+              }
+              ...Object2
+            }
+          }
+          fragment Object2 on Object2 {
+            field2
+          }
+        `,
+        undefined,
+        { fetchUnion }
+      );
+      expect(result.errors).toBeUndefined();
+      expect(result.data).toEqual({ union: { otherField: "other field", targetField: "target field" } });
+      expect(fetchUnion.mock.calls[0][0].object1).toEqual(["targetField", "otherField"]);
+      expect(fetchUnion.mock.calls[0][0].object2).toEqual(["field2"]);
+    });
+  });
+
+  describe("with nested union type", () => {
+    const object2Type = new GraphQLObjectType({ name: "Object2", fields: { field2: { type: GraphQLString } } });
+    const unionType = new GraphQLUnionType({
+      name: "unionType",
+      types: [object1Type, object2Type],
+      extensions: { fieldMaskPathPrefix: { Object1: "object1", Object2: "object2" } },
+    });
+    const parentType = new GraphQLObjectType({
+      name: "Parent",
+      fields: { union: { type: GraphQLNonNull(unionType) } },
+    });
+    const query = `#graphql
+      {
+        parent {
+          union {
+            ... on Object1 {
+              targetField
+              otherField
+            }
+            ...Object2
+          }
+        }
+      }
+      fragment Object2 on Object2 {
+        field2
+      }
+    `;
+
+    it("returns field mask paths without union member type fields", async () => {
+      const schema = createSchema({
+        queryFields: {
+          parent: {
+            type: parentType,
+            resolve(_source, _args, ctx, info) {
+              return ctx.fetchParent(fieldMaskPathsFromResolveInfo("Parent", info));
+            },
+          },
+        },
+      });
+      const fetchParent = jest
+        .fn()
+        .mockReturnValue({ union: { __typename: "Object1", targetField: "target field", otherField: "other field" } });
+      const result = await graphql(schema, query, undefined, { fetchParent });
+      expect(result.errors).toBeUndefined();
+      expect(result.data).toEqual({ parent: { union: { otherField: "other field", targetField: "target field" } } });
+      expect(fetchParent.mock.calls[0][0]).toEqual([]);
+    });
+
+    it("returns field mask path with getAbstractTypeFieldMaskPaths result", async () => {
+      const schema = createSchema({
+        queryFields: {
+          parent: {
+            type: parentType,
+            resolve(_source, _args, ctx, info) {
+              return ctx.fetchParent(
+                fieldMaskPathsFromResolveInfo("Parent", info, {
+                  getAbstractTypeFieldMaskPaths: (info, getFieldMaskPaths) => {
+                    const prefix = info.abstractType.extensions?.fieldMaskPathPrefix[info.concreteType.name];
+                    return getFieldMaskPaths().map((p) => `${prefix}.${p}`);
+                  },
+                })
+              );
+            },
+          },
+        },
+      });
+      const fetchParent = jest
+        .fn()
+        .mockReturnValue({ union: { __typename: "Object1", targetField: "target field", otherField: "other field" } });
+      const result = await graphql(schema, query, undefined, { fetchParent });
+      expect(result.errors).toBeUndefined();
+      expect(result.data).toEqual({ parent: { union: { otherField: "other field", targetField: "target field" } } });
+      expect(fetchParent.mock.calls[0][0]).toEqual([
+        "union.object1.targetField",
+        "union.object1.otherField",
+        "union.object2.field2",
+      ]);
     });
   });
 

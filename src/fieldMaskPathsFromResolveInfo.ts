@@ -2,11 +2,14 @@ import {
   FieldNode,
   FragmentDefinitionNode,
   getNamedType,
+  GraphQLAbstractType,
   GraphQLField,
+  GraphQLNamedType,
   GraphQLObjectType,
   GraphQLResolveInfo,
   GraphQLSchema,
   InlineFragmentNode,
+  isAbstractType,
 } from "graphql";
 
 export type GetFieldNameFunc = (
@@ -15,12 +18,28 @@ export type GetFieldNameFunc = (
   schema: GraphQLSchema
 ) => string | null;
 
+export type GetAbstractTypeFieldMaskPathsFunc = (
+  info: {
+    node: InlineFragmentNode | FragmentDefinitionNode;
+    abstractType: GraphQLAbstractType;
+    concreteType: GraphQLObjectType;
+    field: GraphQLField<any, any> | null;
+  },
+  getFieldMaskPaths: () => string[]
+) => string[];
+
 export type FieldMaskPathsFromResolveInfoOptions = {
   /**
    * Get field name in field mask path.
    * If return `null`, this field is not included in field mask paths.
    */
   getFieldName?: GetFieldNameFunc;
+  /**
+   * Determine field mask paths in abstract type.
+   * By default, it returns only the fields of the abstract type itself and ignores fragments of concrete types,
+   * but you can change this behavior by defining `getAbstractTypeFieldMaskPaths`.
+   */
+  getAbstractTypeFieldMaskPaths?: GetAbstractTypeFieldMaskPathsFunc;
 };
 
 /**
@@ -49,7 +68,7 @@ function fieldMaskPaths(
   const pathSet = new Set<string>();
 
   for (const node of nodes) {
-    for (const path of extractFieldsFromGraphqlAst(typename, node, fragments, schema, opts)) {
+    for (const path of extractFieldsFromGraphqlAst(typename, null, node, fragments, schema, opts)) {
       pathSet.add(path);
     }
   }
@@ -59,6 +78,7 @@ function fieldMaskPaths(
 
 function extractFieldsFromGraphqlAst(
   typename: string,
+  field: GraphQLField<any, any> | null,
   node: FieldNode | FragmentDefinitionNode | InlineFragmentNode,
   fragments: GraphQLResolveInfo["fragments"],
   schema: GraphQLSchema,
@@ -86,28 +106,53 @@ function extractFieldsFromGraphqlAst(
         }
         if (selection.selectionSet) {
           const childTypename = getNamedType(field.type).name;
-          const childFields = extractFieldsFromGraphqlAst(childTypename, selection, fragments, schema, opts);
+          const childFields = extractFieldsFromGraphqlAst(childTypename, field, selection, fragments, schema, opts);
           fields.push(...childFields.map((field) => `${fieldName}.${field}`));
         } else {
           fields.push(fieldName);
         }
         break;
       }
-      case "FragmentSpread": {
-        const fragmentName = selection.name.value;
-        const fragment = fragments[fragmentName];
-        if (fragment == null) {
-          throw new Error(`Fragment ${fragmentName} is not found`);
-        }
-        const childTypename = fragment.typeCondition.name.value;
-        const childFields = extractFieldsFromGraphqlAst(childTypename, fragment, fragments, schema, opts);
-        fields.push(...childFields);
-        break;
-      }
+      case "FragmentSpread":
       case "InlineFragment": {
-        const childTypename = selection.typeCondition ? selection.typeCondition.name.value : typename;
-        const childFields = extractFieldsFromGraphqlAst(childTypename, selection, fragments, schema, opts);
-        fields.push(...childFields);
+        let fragmentTypename: string;
+        let node: FragmentDefinitionNode | InlineFragmentNode;
+        switch (selection.kind) {
+          case "FragmentSpread": {
+            const fragmentName = selection.name.value;
+            const fragment = fragments[fragmentName];
+            if (fragment == null) {
+              throw new Error(`Fragment ${fragmentName} is not found`);
+            }
+            fragmentTypename = fragment.typeCondition.name.value;
+            node = fragment;
+            break;
+          }
+          case "InlineFragment": {
+            fragmentTypename = selection.typeCondition ? selection.typeCondition.name.value : typename;
+            node = selection;
+            break;
+          }
+        }
+        const currentNodeType = getType(typename, schema);
+        if (isAbstractType(currentNodeType)) {
+          if (opts.getAbstractTypeFieldMaskPaths) {
+            const paths = opts.getAbstractTypeFieldMaskPaths(
+              { node, field, abstractType: currentNodeType, concreteType: getObjectType(fragmentTypename, schema) },
+              () => {
+                return extractFieldsFromGraphqlAst(fragmentTypename, field, node, fragments, schema, opts);
+              }
+            );
+            fields.push(...paths);
+          } else {
+            // ignore union types if `getUnionFieldMaskPath` is not passed
+          }
+        } else if (fragmentTypename !== typename) {
+          // no-op
+        } else {
+          const childFields = extractFieldsFromGraphqlAst(typename, field, node, fragments, schema, opts);
+          fields.push(...childFields);
+        }
         break;
       }
     }
@@ -115,11 +160,16 @@ function extractFieldsFromGraphqlAst(
   return fields;
 }
 
-function getObjectType(name: string, schema: GraphQLSchema): GraphQLObjectType {
+function getType(name: string, schema: GraphQLSchema): GraphQLNamedType {
   const foundType = schema.getType(name);
   if (foundType == null) {
     throw new Error(`${name} type is not found`);
   }
+  return foundType;
+}
+
+function getObjectType(name: string, schema: GraphQLSchema): GraphQLObjectType {
+  const foundType = getType(name, schema);
   if (!(foundType instanceof GraphQLObjectType)) {
     throw new Error(`${name} is ${foundType.astNode?.kind}, but want ObjectType`);
   }
