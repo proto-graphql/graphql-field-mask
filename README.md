@@ -47,7 +47,7 @@ resolve(_source, _args, ctx, info) {
 ### With [ProtoNexus](https://github.com/proto-graphql/proto-nexus)
 
 ```ts
-import { ProtobufFieldExtensions } from "proto-nexus";
+import { ProtobufFieldExtensions, ProtobufMessageExtensions, ProtobufOneofExtensions } from "proto-nexus";
 import { fieldMaskPathsFromResolveInfo, GetFieldNameFunc } from "graphql-field-mask";
 
 const getFieldName: GetFieldNameFunc = (field, _type, _schema) => {
@@ -55,8 +55,15 @@ const getFieldName: GetFieldNameFunc = (field, _type, _schema) => {
   return ext.protobufField?.name  ?? null;
 };
 
+const getAbstractTypeFieldMaskPaths: GetAbstractTypeFieldMaskPathsFunc = (info, getFieldMaskPaths) => {
+  const oneofExt = (info.abstractType.extensions ?? {}) as Partial<ProtobufOneofExtensions>;
+  const objExt = (info.concreteType.extensions ?? {}) as Partial<ProtobufMessageExtensions>;
+  const prefix = (oneofExt.protobufOneof.fields ?? []).find(f => f.type === objExt.protobufMessage?.fullName)?.name;
+  return prefix ? getFieldMaskPaths().map(p => `${prefix}.${p}`) : []
+}
+
 resolve(_source, _args, ctx, info) {
-  const paths = fieldMaskPathsFromResolveInfo("User", info, { getFieldName });
+  const paths = fieldMaskPathsFromResolveInfo("User", info, { getFieldName, getAbstractTypeFieldMaskPaths });
   const mask = new FieldMask().setPathsList(paths);
 
   // ...
