@@ -273,11 +273,15 @@ describe(fieldMaskPathsFromResolveInfo, () => {
     const unionType = new GraphQLUnionType({
       name: "unionType",
       types: [object1Type, object2Type],
-      extensions: { fieldMaskPathPrefix: { Object1: "object1", Object2: "object2" } },
     });
     const parentType = new GraphQLObjectType({
       name: "Parent",
-      fields: { union: { type: GraphQLNonNull(unionType) } },
+      fields: {
+        union: {
+          type: GraphQLNonNull(unionType),
+          extensions: { fieldMaskPathPrefix: { Object1: "object1", Object2: "object2" } },
+        },
+      },
     });
     const query = `#graphql
       {
@@ -325,7 +329,7 @@ describe(fieldMaskPathsFromResolveInfo, () => {
               return ctx.fetchParent(
                 fieldMaskPathsFromResolveInfo("Parent", info, {
                   getAbstractTypeFieldMaskPaths: (info, getFieldMaskPaths) => {
-                    const prefix = info.abstractType.extensions?.fieldMaskPathPrefix[info.concreteType.name];
+                    const prefix = info.field.extensions?.fieldMaskPathPrefix[info.concreteType.name];
                     return getFieldMaskPaths().map((p) => `${prefix}.${p}`);
                   },
                 })

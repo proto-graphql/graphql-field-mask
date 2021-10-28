@@ -23,7 +23,7 @@ export type GetAbstractTypeFieldMaskPathsFunc = (
     node: InlineFragmentNode | FragmentDefinitionNode;
     abstractType: GraphQLAbstractType;
     concreteType: GraphQLObjectType;
-    field: GraphQLField<any, any> | null;
+    field: GraphQLField<any, any>;
   },
   getFieldMaskPaths: () => string[]
 ) => string[];
@@ -137,6 +137,9 @@ function extractFieldsFromGraphqlAst(
         const currentNodeType = getType(typename, schema);
         if (isAbstractType(currentNodeType)) {
           if (opts.getAbstractTypeFieldMaskPaths) {
+            if (field == null) {
+              throw new Error("field is expected to be present. please report issue.");
+            }
             const paths = opts.getAbstractTypeFieldMaskPaths(
               { node, field, abstractType: currentNodeType, concreteType: getObjectType(fragmentTypename, schema) },
               () => {
