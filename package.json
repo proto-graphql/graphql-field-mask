@@ -1,6 +1,6 @@
 {
   "name": "graphql-field-mask",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "google.protobuf.FieldMask from GraphQL query",
   "sideEffects": false,
   "main": "lib/index.js",
