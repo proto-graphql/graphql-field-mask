@@ -329,7 +329,8 @@ describe(fieldMaskPathsFromResolveInfo, () => {
               return ctx.fetchParent(
                 fieldMaskPathsFromResolveInfo("Parent", info, {
                   getAbstractTypeFieldMaskPaths: (info, getFieldMaskPaths) => {
-                    const prefix = info.field.extensions?.fieldMaskPathPrefix[info.concreteType.name];
+                    // eslint-disable-next-line dot-notation
+                    const prefix = info.field.extensions?.["fieldMaskPathPrefix"][info.concreteType.name];
                     return getFieldMaskPaths().map((p) => `${prefix}.${p}`);
                   },
                 })
