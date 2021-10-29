@@ -25,7 +25,8 @@ jobs:
     strategy:
       matrix:
         node_version: [14, 16]
-    name: Test - Node.js ${{ matrix.node_version }}
+        graphqljs_version: ['15.0.0', '15.x', '16.0.0', '16.x']
+    name: Test - Node.js ${{ matrix.node_version }}, graphql ${{ matrix.graphqljs_version }}
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-node@v2
@@ -34,10 +35,12 @@ jobs:
         cache: 'yarn'
     - run: yarn --frozen-lockfile
     - run: yarn test --ci --coverage
+      env:
+        GRAPHQLJS_VERSION: ${{ matrix.graphqljs_version }}
     - uses: coverallsapp/github-action@v1.1.2
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
-        flag-name: node${{ matrix.node }}
+        flag-name: node${{ matrix.node_version }}-graphql@${{ matrix.graphqljs_version }}
         parallel: true
 
   test-finish:

@@ -30,7 +30,11 @@
   "devDependencies": {
     "@types/jest": "^27.0.2",
     "frolint": "^2.8.2",
-    "graphql": "^15.6.1",
+    "graphql-15.0.0": "npm:graphql@15.0.0",
+    "graphql-15.x": "npm:graphql@15.x",
+    "graphql-16.0.0": "npm:graphql@16.0.0",
+    "graphql-16.x": "npm:graphql@16.x",
+    "graphql": "link:./node_modules/graphql-16.x",
     "jest": "^27.3.1",
     "ts-jest": "^27.0.7",
     "typescript": "^4.4.4"
