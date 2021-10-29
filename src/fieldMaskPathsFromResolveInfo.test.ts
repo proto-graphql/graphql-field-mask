@@ -271,7 +271,7 @@ describe(fieldMaskPathsFromResolveInfo, () => {
   describe("with nested union type", () => {
     const object2Type = new GraphQLObjectType({ name: "Object2", fields: { field2: { type: GraphQLString } } });
     const unionType = new GraphQLUnionType({
-      name: "unionType",
+      name: "UnionType",
       types: [object1Type, object2Type],
     });
     const parentType = new GraphQLObjectType({
@@ -321,6 +321,45 @@ describe(fieldMaskPathsFromResolveInfo, () => {
     });
 
     it("returns field mask path with getAbstractTypeFieldMaskPaths result", async () => {
+      const schema = createSchema({
+        queryFields: {
+          parent: {
+            type: parentType,
+            resolve(_source, _args, ctx, info) {
+              return ctx.fetchParent(
+                fieldMaskPathsFromResolveInfo("Parent", info, {
+                  getAbstractTypeFieldMaskPaths: (info, getFieldMaskPaths) => {
+                    // eslint-disable-next-line dot-notation
+                    const prefix = info.field.extensions?.["fieldMaskPathPrefix"][info.concreteType.name];
+                    return getFieldMaskPaths().map((p) => `${prefix}.${p}`);
+                  },
+                })
+              );
+            },
+          },
+        },
+      });
+      const fetchParent = jest
+        .fn()
+        .mockReturnValue({ union: { __typename: "Object1", targetField: "target field", otherField: "other field" } });
+      const result = await graphql(schema, query, undefined, { fetchParent });
+      expect(result.errors).toBeUndefined();
+      expect(result.data).toEqual({ parent: { union: { otherField: "other field", targetField: "target field" } } });
+      expect(fetchParent.mock.calls[0][0]).toEqual([
+        "union.object1.targetField",
+        "union.object1.otherField",
+        "union.object2.field2",
+      ]);
+    });
+
+    it("union fragment", async () => {
+      const query = `#graphql
+        query { parent { union { ...UnionType } } }
+        fragment UnionType on UnionType {
+          ... on Object1 { targetField, otherField }
+          ... on Object2 { field2 }
+        }
+      `;
       const schema = createSchema({
         queryFields: {
           parent: {

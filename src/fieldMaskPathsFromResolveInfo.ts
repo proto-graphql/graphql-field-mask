@@ -136,7 +136,10 @@ function extractFieldsFromGraphqlAst(
         }
         const currentNodeType = getType(typename, schema);
         if (isAbstractType(currentNodeType)) {
-          if (opts.getAbstractTypeFieldMaskPaths) {
+          if (typename === fragmentTypename) {
+            const childFields = extractFieldsFromGraphqlAst(typename, field, node, fragments, schema, opts);
+            fields.push(...childFields);
+          } else if (opts.getAbstractTypeFieldMaskPaths) {
             if (field == null) {
               throw new Error("field is expected to be present. please report issue.");
             }
