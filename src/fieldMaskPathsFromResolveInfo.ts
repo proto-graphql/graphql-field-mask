@@ -134,6 +134,7 @@ function extractFieldsFromGraphqlAst(
             break;
           }
         }
+        const fragmentType = getType(fragmentTypename, schema);
         const currentNodeType = getType(typename, schema);
         if (isAbstractType(currentNodeType)) {
           if (typename === fragmentTypename) {
@@ -153,7 +154,7 @@ function extractFieldsFromGraphqlAst(
           } else {
             // ignore union types if `getUnionFieldMaskPath` is not passed
           }
-        } else if (fragmentTypename !== typename) {
+        } else if (!isAbstractType(fragmentType) && fragmentTypename !== typename) {
           // no-op
         } else {
           const childFields = extractFieldsFromGraphqlAst(typename, field, node, fragments, schema, opts);
