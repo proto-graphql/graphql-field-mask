@@ -133,6 +133,9 @@ function extractFieldsFromGraphqlAst(
             node = selection;
             break;
           }
+          default: {
+            throw new Error("unreachable");
+          }
         }
         const fragmentType = getType(fragmentTypename, schema);
         const currentNodeType = getType(typename, schema);
