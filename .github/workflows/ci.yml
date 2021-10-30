@@ -24,20 +24,28 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node_version: [14, 16]
-    name: Test - Node.js ${{ matrix.node_version }}
+        node: ['12', '14', '16']
+        graphqljs: ['16.x']
+        include:
+        - { node: '16', graphqljs: '15.0.0' }
+        - { node: '16', graphqljs: '15.x' }
+        - { node: '16', graphqljs: '16.0.0' }
+        - { node: '16', graphqljs: '16.x' }
+    name: Test - Node.js ${{ matrix.node }}, graphql ${{ matrix.graphqljs }}
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-node@v2
       with:
-        node-version: ${{ matrix.node_version }}
+        node-version: ${{ matrix.node }}
         cache: 'yarn'
     - run: yarn --frozen-lockfile
     - run: yarn test --ci --coverage
+      env:
+        GRAPHQLJS_VERSION: ${{ matrix.graphqljs }}
     - uses: coverallsapp/github-action@v1.1.2
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
-        flag-name: node${{ matrix.node }}
+        flag-name: node${{ matrix.node }}-graphql@${{ matrix.graphqljs }}
         parallel: true
 
   test-finish:

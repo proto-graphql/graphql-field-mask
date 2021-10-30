@@ -5,5 +5,5 @@
     "noEmit": true,
     "tsBuildInfoFile": "../tmp/tsconfig.test.tsbuildinfo"
   },
-  "include": ["../src/**/*.test.ts"]
+  "include": ["../src/**/*.test.ts", "../testResolver.js", "../jest.config.js"]
 }
