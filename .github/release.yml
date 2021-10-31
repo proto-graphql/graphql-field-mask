@@ -1,0 +1,23 @@
+changelog:
+  categories:
+    - titie: Breaking Changes 💥
+      labels:
+        - breaking-change
+    - titie: Enhancements 🚀
+      labels:
+        - enhancement
+    - title: Bug Fixes 🐛
+      labels:
+        - bug
+    - title: Polish 💅
+      labels:
+        - polish
+    - title: Internal 🏠
+      labels:
+        - internal
+    - title: Dependencies 📦
+      labels:
+        - dependencies
+    - title: Documentations 📝
+      labels:
+        - documentation
