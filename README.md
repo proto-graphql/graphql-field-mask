@@ -28,6 +28,27 @@ const queryType = new GraphQLObjectType({
 })
 ```
 
+### With custom scalar
+
+```ts
+import { fieldMaskPathsFromResolveInfo, GetCustomScalarFieldMaskPaths } from "graphql-field-mask";
+
+const getCustomScalarFieldMaskPaths: GetCustomScalarFieldMaskPaths = (fieldName, info) => {
+  switch (info.type.name) {
+    case 'Date':
+      return ['year', 'month', 'day'].map(c => `${fieldName}.${c}`);
+    // ...
+  }
+};
+
+resolve(_source, _args, ctx, info) {
+  const paths = fieldMaskPathsFromResolveInfo("User", info, { getCustomScalarFieldMaskPaths });
+  const mask = new FieldMask().setPathsList(paths);
+
+  // ...
+}
+```
+
 ### Convert to snake case
 
 ```ts

@@ -1,4 +1,5 @@
 import {
+  extendSchema,
   graphql,
   GraphQLInt,
   GraphQLNonNull,
@@ -7,6 +8,7 @@ import {
   GraphQLSchema,
   GraphQLString,
   GraphQLUnionType,
+  parse,
 } from "graphql";
 import { fieldMaskPathsFromResolveInfo, GetFieldNameFunc } from "./fieldMaskPathsFromResolveInfo";
 
@@ -231,6 +233,55 @@ describe(fieldMaskPathsFromResolveInfo, () => {
         parent: { parentField: 1, object1: { otherField: "other field", targetField: "target field" } },
       });
       expect(fetchParent.mock.calls[0][0]).toEqual(["parentField", "object1.targetField", "object1.otherField"]);
+    });
+  });
+
+  describe("with custom scalar", () => {
+    it("returns field mask paths with getCustomScalarFieldMaskPath result", async () => {
+      let schema = createSchema({
+        queryFields: {
+          object1: {
+            type: object1Type,
+            resolve(_source, _args, ctx, info) {
+              return ctx.fetchObject1(
+                fieldMaskPathsFromResolveInfo("Object1", info, {
+                  getCustomScalarFieldMaskPaths: (path, info) => {
+                    if (info.type.name === "Date") return ["year", "month", "day"].map((c) => `${path}.${c}`);
+                    throw new Error(`unkonwn scalar type: ${info.type.name}`);
+                  },
+                })
+              );
+            },
+          },
+        },
+      });
+      schema = extendSchema(
+        schema,
+        parse(`
+          scalar Date
+          extend type Object1 { date: Date! }
+        `)
+      );
+      const fetchObject1 = jest
+        .fn()
+        .mockReturnValue({ targetField: "target field", otherField: "other field", date: "2021-11-01" });
+      const result = await graphql({
+        schema,
+        source: `query { object1 { targetField, otherField, date } }`,
+        contextValue: { fetchObject1 },
+      });
+
+      expect(result.errors).toBeUndefined();
+      expect(result.data).toEqual({
+        object1: { targetField: "target field", otherField: "other field", date: "2021-11-01" },
+      });
+      expect(fetchObject1.mock.calls[0][0]).toEqual([
+        "targetField",
+        "otherField",
+        "date.year",
+        "date.month",
+        "date.day",
+      ]);
     });
   });
 
