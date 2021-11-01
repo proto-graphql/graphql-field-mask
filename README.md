@@ -1,8 +1,8 @@
 # graphql-field-mask
-[![CI](https://github.com/izumin5210/graphql-field-mask/actions/workflows/ci.yml/badge.svg)](https://github.com/izumin5210/graphql-field-mask/actions/workflows/ci.yml)
-[![Coverage Status](https://coveralls.io/repos/github/izumin5210/graphql-field-mask/badge.svg?branch=main)](https://coveralls.io/github/izumin5210/graphql-field-mask?branch=main)
+[![CI](https://github.com/proto-graphql/graphql-field-mask/actions/workflows/ci.yml/badge.svg)](https://github.com/proto-graphql/graphql-field-mask/actions/workflows/ci.yml)
+[![Coverage Status](https://coveralls.io/repos/github/proto-graphql/graphql-field-mask/badge.svg?branch=main)](https://coveralls.io/github/proto-graphql/graphql-field-mask?branch=main)
 [![npm](https://img.shields.io/npm/v/graphql-field-mask)](https://www.npmjs.com/package/graphql-field-mask)
-[![LICENSE](https://img.shields.io/github/license/izumin5210/graphql-field-mask)](./LICENSE)
+[![LICENSE](https://img.shields.io/github/license/proto-graphql/graphql-field-mask)](./LICENSE)
 
 `google.protobuf.FieldMask` from GraphQL query
 
@@ -90,3 +90,7 @@ resolve(_source, _args, ctx, info) {
   // ...
 }
 ```
+
+## Author
+
+- [Masayuki Izumi (@izumin5210)](https://github.com/izumin5210)
