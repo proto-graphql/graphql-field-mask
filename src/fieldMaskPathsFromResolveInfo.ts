@@ -7,6 +7,7 @@ import {
   GraphQLNamedType,
   GraphQLObjectType,
   GraphQLResolveInfo,
+  GraphQLScalarType,
   GraphQLSchema,
   InlineFragmentNode,
   isAbstractType,
@@ -28,6 +29,17 @@ export type GetAbstractTypeFieldMaskPathsFunc = (
   getFieldMaskPaths: () => string[]
 ) => string[];
 
+export type GetCustomScalarTypeFieldMaskPathsFunc = (
+  path: string,
+  info: {
+    node: FieldNode;
+    type: GraphQLScalarType;
+    field: GraphQLField<any, any>;
+  }
+) => string[];
+
+const defaultScalarTypeNames = new Set(["Int", "Float", "String", "Boolean", "ID"]);
+
 export type FieldMaskPathsFromResolveInfoOptions = {
   /**
    * Get field name in field mask path.
@@ -40,6 +52,11 @@ export type FieldMaskPathsFromResolveInfoOptions = {
    * but you can change this behavior by defining `getAbstractTypeFieldMaskPaths`.
    */
   getAbstractTypeFieldMaskPaths?: GetAbstractTypeFieldMaskPathsFunc;
+  /**
+   * Determine field mask paths in custom scalar type.
+   * By default, it returns only the field name of the scalar type.
+   */
+  getCustomScalarFieldMaskPaths?: GetCustomScalarTypeFieldMaskPathsFunc;
 };
 
 /**
@@ -104,10 +121,17 @@ function extractFieldsFromGraphqlAst(
         if (fieldName == null) {
           break;
         }
+        const fieldType = getNamedType(field.type);
         if (selection.selectionSet) {
           const childTypename = getNamedType(field.type).name;
           const childFields = extractFieldsFromGraphqlAst(childTypename, field, selection, fragments, schema, opts);
           fields.push(...childFields.map((field) => `${fieldName}.${field}`));
+        } else if (
+          fieldType instanceof GraphQLScalarType &&
+          !defaultScalarTypeNames.has(fieldType.name) &&
+          opts.getCustomScalarFieldMaskPaths
+        ) {
+          fields.push(...opts.getCustomScalarFieldMaskPaths(fieldName, { field, type: fieldType, node: selection }));
         } else {
           fields.push(fieldName);
         }
