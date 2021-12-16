@@ -28,37 +28,42 @@ const queryType = new GraphQLObjectType({
 })
 ```
 
-### With custom scalar
-
-```ts
-import { fieldMaskPathsFromResolveInfo, GetCustomScalarFieldMaskPaths } from "graphql-field-mask";
-
-const getCustomScalarFieldMaskPaths: GetCustomScalarFieldMaskPaths = (fieldName, info) => {
-  switch (info.type.name) {
-    case 'Date':
-      return ['year', 'month', 'day'].map(c => `${fieldName}.${c}`);
-    // ...
-  }
-};
-
-resolve(_source, _args, ctx, info) {
-  const paths = fieldMaskPathsFromResolveInfo("User", info, { getCustomScalarFieldMaskPaths });
-  const mask = new FieldMask().setPathsList(paths);
-
-  // ...
-}
-```
-
 ### Convert to snake case
 
 ```ts
 import { snakeCase } from "change-case";
 import { fieldMaskPathsFromResolveInfo, GetFieldNameFunc } from "graphql-field-mask";
 
-const getFieldName: GetFieldNameFunc = (field, _type, _schema) => snakeCase(field.name);
+const getFieldName: GetFieldNameFunc = ({ field }) => snakeCase(field.name);
 
 resolve(_source, _args, ctx, info) {
   const paths = fieldMaskPathsFromResolveInfo("User", info, { getFieldName });
+  const mask = new FieldMask().setPathsList(paths);
+
+  // ...
+}
+```
+
+### With custom scalar
+
+```ts
+import { getNamedType, isScalarType } from "graphql";
+import { fieldMaskPathsFromResolveInfo, GetFieldNameFunc } from "graphql-field-mask";
+
+const getFieldName: GetFieldNameFunc = ({ field }) => {
+  const fieldType = getNamedType(field.type);
+  if (isScalarType(fieldType)) {
+    switch (fieldType.name) {
+    case 'Date':
+      return ['year', 'month', 'day'].map(c => `${fieldName}.${c}`);
+    // ...
+    }
+  }
+  return field.name
+};
+
+resolve(_source, _args, ctx, info) {
+  const paths = fieldMaskPathsFromResolveInfo("User", info, { getCustomScalarFieldMaskPaths });
   const mask = new FieldMask().setPathsList(paths);
 
   // ...
@@ -71,7 +76,7 @@ resolve(_source, _args, ctx, info) {
 import { ProtobufFieldExtensions, ProtobufMessageExtensions, ProtobufOneofExtensions } from "proto-nexus";
 import { fieldMaskPathsFromResolveInfo, GetFieldNameFunc } from "graphql-field-mask";
 
-const getFieldName: GetFieldNameFunc = (field, _type, _schema) => {
+const getFieldName: GetFieldNameFunc = ({ field }) => {
   const ext = (field.extensions ?? {}) as Partial<ProtobufFieldExtensions>;
   return ext.protobufField?.name  ?? null;
 };

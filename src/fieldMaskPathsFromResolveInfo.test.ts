@@ -1,5 +1,6 @@
 import {
   extendSchema,
+  getNamedType,
   graphql,
   GraphQLInt,
   GraphQLNonNull,
@@ -8,6 +9,7 @@ import {
   GraphQLSchema,
   GraphQLString,
   GraphQLUnionType,
+  isScalarType,
   parse,
 } from "graphql";
 import { fieldMaskPathsFromResolveInfo, GetFieldNameFunc } from "./fieldMaskPathsFromResolveInfo";
@@ -16,8 +18,8 @@ type FieldMaskExtensions = {
   fieldMask: { fieldName: string };
 };
 
-const getFieldName: GetFieldNameFunc = (field, _type, _schema) => {
-  const ext = (field.extensions ?? {}) as Partial<FieldMaskExtensions>;
+const getFieldName: GetFieldNameFunc = (info) => {
+  const ext = (info.field.extensions ?? {}) as Partial<FieldMaskExtensions>;
   return ext.fieldMask?.fieldName ?? null;
 };
 
@@ -245,9 +247,12 @@ describe(fieldMaskPathsFromResolveInfo, () => {
             resolve(_source, _args, ctx, info) {
               return ctx.fetchObject1(
                 fieldMaskPathsFromResolveInfo("Object1", info, {
-                  getCustomScalarFieldMaskPaths: (path, info) => {
-                    if (info.type.name === "Date") return ["year", "month", "day"].map((c) => `${path}.${c}`);
-                    throw new Error(`unkonwn scalar type: ${info.type.name}`);
+                  getFieldName: (info) => {
+                    const fieldType = getNamedType(info.field.type);
+                    if (isScalarType(fieldType) && fieldType.name === "Date") {
+                      return ["year", "month", "day"].map((c) => `${info.field.name}.${c}`);
+                    }
+                    return info.field.name;
                   },
                 })
               );
