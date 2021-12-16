@@ -7,38 +7,32 @@ import {
   GraphQLNamedType,
   GraphQLObjectType,
   GraphQLResolveInfo,
-  GraphQLScalarType,
   GraphQLSchema,
   InlineFragmentNode,
   isAbstractType,
 } from "graphql";
 
-export type GetFieldNameFunc = (
-  field: GraphQLField<any, any>,
-  type: GraphQLObjectType,
-  schema: GraphQLSchema
-) => string | null;
+type FieldInfo = {
+  fieldNode: FieldNode;
+  field: GraphQLField<any, any>;
+  objectType: GraphQLObjectType;
+  schema: GraphQLSchema;
+};
+
+type AbstractFieldInfo = {
+  fragmentNode: InlineFragmentNode | FragmentDefinitionNode;
+  abstractType: GraphQLAbstractType;
+  concreteType: GraphQLObjectType;
+  field: GraphQLField<any, any>;
+  schema: GraphQLSchema;
+};
+
+export type GetFieldNameFunc = (info: FieldInfo) => string | string[] | null;
 
 export type GetAbstractTypeFieldMaskPathsFunc = (
-  info: {
-    node: InlineFragmentNode | FragmentDefinitionNode;
-    abstractType: GraphQLAbstractType;
-    concreteType: GraphQLObjectType;
-    field: GraphQLField<any, any>;
-  },
+  info: AbstractFieldInfo,
   getFieldMaskPaths: () => string[]
 ) => string[];
-
-export type GetCustomScalarTypeFieldMaskPathsFunc = (
-  path: string,
-  info: {
-    node: FieldNode;
-    type: GraphQLScalarType;
-    field: GraphQLField<any, any>;
-  }
-) => string[];
-
-const defaultScalarTypeNames = new Set(["Int", "Float", "String", "Boolean", "ID"]);
 
 export type FieldMaskPathsFromResolveInfoOptions = {
   /**
@@ -52,11 +46,6 @@ export type FieldMaskPathsFromResolveInfoOptions = {
    * but you can change this behavior by defining `getAbstractTypeFieldMaskPaths`.
    */
   getAbstractTypeFieldMaskPaths?: GetAbstractTypeFieldMaskPathsFunc;
-  /**
-   * Determine field mask paths in custom scalar type.
-   * By default, it returns only the field name of the scalar type.
-   */
-  getCustomScalarFieldMaskPaths?: GetCustomScalarTypeFieldMaskPathsFunc;
 };
 
 /**
@@ -66,6 +55,91 @@ export type FieldMaskPathsFromResolveInfoOptions = {
  * @param info
  * @param opts
  * @returns field mask paths
+ *
+ * @example
+ * ```ts
+ * import { FieldMask } from "google-protobuf/google/protobuf/field_mask_pb";
+ * import { fieldMaskPathsFromResolveInfo } from "graphql-field-mask";
+ *
+ * const queryType = new GraphQLObjectType({
+ *   name: "Query",
+ *   fields: {
+ *     viewer: {
+ *       type: User,
+ *       resolve(_source, _args, ctx, info) {
+ *         const paths = fieldMaskPathsFromResolveInfo("User", info);
+ *         const mask = new FieldMask().setPathsList(paths);
+ *
+ *         // ...
+ *       }
+ *     }
+ *   }
+ * })
+ * ```
+ *
+ * ### Convert to snake case
+ * ```ts
+ * import { snakeCase } from "change-case";
+ * import { fieldMaskPathsFromResolveInfo, GetFieldNameFunc } from "graphql-field-mask";
+ *
+ * const getFieldName: GetFieldNameFunc = ({ field }) => snakeCase(field.name);
+ *
+ * resolve(_source, _args, ctx, info) {
+ *   const paths = fieldMaskPathsFromResolveInfo("User", info, { getFieldName });
+ *   const mask = new FieldMask().setPathsList(paths);
+ *
+ *   // ...
+ * }
+ * ```
+ *
+ * ### With custom scalar
+ * ```ts
+ * import { getNamedType, isScalarType } from "graphql";
+ * import { fieldMaskPathsFromResolveInfo, GetFieldNameFunc } from "graphql-field-mask";
+ *
+ * const getFieldName: GetFieldNameFunc = ({ field }) => {
+ *   const fieldType = getNamedType(field.type);
+ *   if (isScalarType(fieldType)) {
+ *     switch (fieldType.name) {
+ *     case 'Date':
+ *       return ['year', 'month', 'day'].map(c => `${fieldName}.${c}`);
+ *     // ...
+ *     }
+ *   }
+ *   return field.name
+ * };
+ *
+ * resolve(_source, _args, ctx, info) {
+ *   const paths = fieldMaskPathsFromResolveInfo("User", info, { getCustomScalarFieldMaskPaths });
+ *   const mask = new FieldMask().setPathsList(paths);
+ *
+ *   // ...
+ * }
+ * ```
+ *
+ * ### With [ProtoNexus](https://github.com/proto-graphql/proto-nexus)
+ * ```ts
+ * import { ProtobufFieldExtensions, ProtobufMessageExtensions, ProtobufOneofExtensions } from "proto-nexus";
+ * import { fieldMaskPathsFromResolveInfo, GetFieldNameFunc } from "graphql-field-mask";
+ *
+ * const getFieldName: GetFieldNameFunc = ({ field }) => {
+ *   const ext = (field.extensions ?? {}) as Partial<ProtobufFieldExtensions>;
+ *   return ext.protobufField?.name  ?? null;
+ * };
+ *
+ * const getAbstractTypeFieldMaskPaths: GetAbstractTypeFieldMaskPathsFunc = (info, getFieldMaskPaths) => {
+ *   const oneofExt = (info.abstractType.extensions ?? {}) as Partial<ProtobufOneofExtensions>;
+ *   const objExt = (info.concreteType.extensions ?? {}) as Partial<ProtobufMessageExtensions>;
+ *   const prefix = (oneofExt.protobufOneof.fields ?? []).find(f => f.type === objExt.protobufMessage?.fullName)?.name;
+ *   return prefix ? getFieldMaskPaths().map(p => `${prefix}.${p}`) : []
+ * }
+ *
+ * resolve(_source, _args, ctx, info) {
+ *   const paths = fieldMaskPathsFromResolveInfo("User", info, { getFieldName, getAbstractTypeFieldMaskPaths });
+ *   const mask = new FieldMask().setPathsList(paths);
+ *   // ...
+ * }
+ * ```
  */
 export function fieldMaskPathsFromResolveInfo(
   typename: string,
@@ -117,23 +191,19 @@ function extractFieldsFromGraphqlAst(
         if (field == null) {
           throw new Error(`${typename}.${selection.name.value} is not found`);
         }
-        const fieldName = opts.getFieldName ? opts.getFieldName(field, type, schema) : field.name;
-        if (fieldName == null) {
+        const fieldNameOrFieldNames = opts.getFieldName
+          ? opts.getFieldName({ fieldNode: selection, field, objectType: type, schema })
+          : field.name;
+        if (fieldNameOrFieldNames == null) {
           break;
         }
-        const fieldType = getNamedType(field.type);
+        const fieldNames = Array.isArray(fieldNameOrFieldNames) ? fieldNameOrFieldNames : [fieldNameOrFieldNames];
         if (selection.selectionSet) {
           const childTypename = getNamedType(field.type).name;
           const childFields = extractFieldsFromGraphqlAst(childTypename, field, selection, fragments, schema, opts);
-          fields.push(...childFields.map((field) => `${fieldName}.${field}`));
-        } else if (
-          fieldType instanceof GraphQLScalarType &&
-          !defaultScalarTypeNames.has(fieldType.name) &&
-          opts.getCustomScalarFieldMaskPaths
-        ) {
-          fields.push(...opts.getCustomScalarFieldMaskPaths(fieldName, { field, type: fieldType, node: selection }));
+          fields.push(...childFields.flatMap((field) => fieldNames.map((fieldName) => `${fieldName}.${field}`)));
         } else {
-          fields.push(fieldName);
+          fields.push(...fieldNames);
         }
         break;
       }
@@ -172,7 +242,13 @@ function extractFieldsFromGraphqlAst(
               throw new Error("field is expected to be present. please report issue.");
             }
             const paths = opts.getAbstractTypeFieldMaskPaths(
-              { node, field, abstractType: currentNodeType, concreteType: getObjectType(fragmentTypename, schema) },
+              {
+                fragmentNode: node,
+                abstractType: currentNodeType,
+                concreteType: getObjectType(fragmentTypename, schema),
+                field,
+                schema,
+              },
               () => {
                 return extractFieldsFromGraphqlAst(fragmentTypename, field, node, fragments, schema, opts);
               }
