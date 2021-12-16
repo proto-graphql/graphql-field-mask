@@ -1,3 +1,12 @@
+# v0.2.0
+
+## What's Changed
+### Breaking Changes 💥
+* Integrate `getFieldName` and `getCustomScalarFieldMaskPaths` by @izumin5210 in https://github.com/proto-graphql/graphql-field-mask/pull/13
+
+
+**Full Changelog**: https://github.com/proto-graphql/graphql-field-mask/compare/v0.1.4...v0.2.0
+
 # v0.1.4
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
