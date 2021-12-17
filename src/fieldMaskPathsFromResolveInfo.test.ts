@@ -523,7 +523,7 @@ describe(fieldMaskPathsFromResolveInfo, () => {
               return ctx.fetchParent(
                 fieldMaskPathsFromResolveInfo("Parent", info, {
                   addExtraFields: ({ field }) => {
-                    return (field.extensions as { dependentFields?: string[] }).dependentFields ?? [];
+                    return (field.extensions as { dependentFields?: string[] } | undefined)?.dependentFields ?? [];
                   },
                 })
               );
