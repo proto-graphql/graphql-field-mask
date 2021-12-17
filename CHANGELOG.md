@@ -1,3 +1,12 @@
+# v0.2.1
+
+## What's Changed
+### Enhancements 🚀
+* Support `addExtraFields` by @izumin5210 in https://github.com/proto-graphql/graphql-field-mask/pull/14
+
+
+**Full Changelog**: https://github.com/proto-graphql/graphql-field-mask/compare/v0.2.0...v0.2.1
+
 # v0.2.0
 
 ## What's Changed
