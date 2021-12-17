@@ -70,6 +70,23 @@ resolve(_source, _args, ctx, info) {
 }
 ```
 
+### With extra fields
+
+```ts
+import { fieldMaskPathsFromResolveInfo, AddExtraFieldsFunc } from "graphql-field-mask";
+
+const addExtraFields: AddExtraFieldsFunc = ({ field }) => {
+  return (field.extension as { dependentFields?: string[] }).dependentFields ?? []
+};
+
+resolve(_source, _args, ctx, info) {
+  const paths = fieldMaskPathsFromResolveInfo("User", info, { addExtraFields });
+  const mask = new FieldMask().setPathsList(paths);
+
+  // ...
+}
+```
+
 ### With [ProtoNexus](https://github.com/proto-graphql/proto-nexus)
 
 ```ts

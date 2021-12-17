@@ -489,6 +489,77 @@ describe(fieldMaskPathsFromResolveInfo, () => {
     });
   });
 
+  describe("with `addExtraFields`", () => {
+    it("returns field mask paths with extra fields", async () => {
+      const childType = new GraphQLObjectType({
+        name: "Child",
+        fields: {
+          childField: {
+            type: GraphQLInt,
+            extensions: {
+              dependentFields: ["extraField2", "extraField3"],
+            },
+          },
+        },
+        extensions: {},
+      });
+      const parentType = new GraphQLObjectType({
+        name: "Parent",
+        fields: {
+          parentField: {
+            type: GraphQLInt,
+            extensions: {
+              dependentFields: ["extraField1"],
+            },
+          },
+          child: { type: new GraphQLNonNull(childType) },
+        },
+      });
+      const schema = createSchema({
+        queryFields: {
+          parent: {
+            type: parentType,
+            resolve(_source, _args, ctx, info) {
+              return ctx.fetchParent(
+                fieldMaskPathsFromResolveInfo("Parent", info, {
+                  addExtraFields: ({ field }) => {
+                    return (field.extensions as { dependentFields?: string[] } | undefined)?.dependentFields ?? [];
+                  },
+                })
+              );
+            },
+          },
+        },
+      });
+      const fetchParent = jest.fn().mockReturnValue({ parentField: 1, child: { childField: 1 } });
+      const result1 = await graphql({
+        schema,
+        source: "{ parent { parentField, child { childField } } }",
+        contextValue: { fetchParent },
+      });
+
+      expect(result1.errors).toBeUndefined();
+      expect(result1.data).toEqual({ parent: { parentField: 1, child: { childField: 1 } } });
+      expect(fetchParent.mock.calls[0][0]).toEqual([
+        "extraField1",
+        "parentField",
+        "child.extraField2",
+        "child.extraField3",
+        "child.childField",
+      ]);
+
+      const result2 = await graphql({
+        schema,
+        source: "{ parent { child { childField } } }",
+        contextValue: { fetchParent },
+      });
+
+      expect(result2.errors).toBeUndefined();
+      expect(result2.data).toEqual({ parent: { child: { childField: 1 } } });
+      expect(fetchParent.mock.calls[1][0]).toEqual(["child.extraField2", "child.extraField3", "child.childField"]);
+    });
+  });
+
   describe("when fetch outside of query resolvers", () => {
     it("returns valid mask paths", async () => {
       const parentType = new GraphQLObjectType({

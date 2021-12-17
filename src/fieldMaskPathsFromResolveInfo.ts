@@ -27,6 +27,7 @@ type AbstractFieldInfo = {
   schema: GraphQLSchema;
 };
 
+export type AddExtraFieldsFunc = (info: FieldInfo) => string[];
 export type GetFieldNameFunc = (info: FieldInfo) => string | string[] | null;
 
 export type GetAbstractTypeFieldMaskPathsFunc = (
@@ -46,6 +47,10 @@ export type FieldMaskPathsFromResolveInfoOptions = {
    * but you can change this behavior by defining `getAbstractTypeFieldMaskPaths`.
    */
   getAbstractTypeFieldMaskPaths?: GetAbstractTypeFieldMaskPathsFunc;
+  /**
+   * Return additional fields, such as fields that are dependent in a resolver.
+   */
+  addExtraFields?: AddExtraFieldsFunc;
 };
 
 /**
@@ -113,6 +118,22 @@ export type FieldMaskPathsFromResolveInfoOptions = {
  *   const paths = fieldMaskPathsFromResolveInfo("User", info, { getCustomScalarFieldMaskPaths });
  *   const mask = new FieldMask().setPathsList(paths);
  *
+ *   // ...
+ * }
+ * ```
+ *
+ * ### With extra fields
+ *
+ * ```ts
+ * import { fieldMaskPathsFromResolveInfo, AddExtraFieldsFunc } from "graphql-field-mask";
+ *
+ * const addExtraFields: AddExtraFieldsFunc = ({ field }) => {
+ *   return (field.extension as { dependentFields?: string[] }).dependentFields ?? []
+ * };
+ *
+ * resolve(_source, _args, ctx, info) {
+ *   const paths = fieldMaskPathsFromResolveInfo("User", info, { addExtraFields });
+ *   const mask = new FieldMask().setPathsList(paths);
  *   // ...
  * }
  * ```
@@ -190,6 +211,10 @@ function extractFieldsFromGraphqlAst(
         const field = type.getFields()[selection.name.value];
         if (field == null) {
           throw new Error(`${typename}.${selection.name.value} is not found`);
+        }
+        if (opts.addExtraFields) {
+          const extraFields = opts.addExtraFields({ fieldNode: selection, field, objectType: type, schema });
+          fields.push(...extraFields);
         }
         const fieldNameOrFieldNames = opts.getFieldName
           ? opts.getFieldName({ fieldNode: selection, field, objectType: type, schema })
